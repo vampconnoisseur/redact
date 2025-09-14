@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition, useEffect } from "react";
 import { useFormStatus } from "react-dom";
-import { uploadDocument, shareDocument, getPresignedUrl } from "../lib/actions";
+import { uploadDocument, shareDocument, getPresignedUrl, unredactAndDownloadDocument } from "../lib/actions";
 import { UserWithDocuments } from "../lib/types";
 
 type User = UserWithDocuments;
@@ -76,13 +76,11 @@ const Modal = ({
     );
 };
 
-// --- Form Components ---
-
 const UploadForm = ({ onClose }: { onClose: () => void }) => {
-    const [state, formAction] = useActionState(uploadDocument, { message: "" });
+    const [state, formAction] = useActionState(uploadDocument, { success: false, message: "" });
 
     useEffect(() => {
-        if (state.message.includes("successfully")) {
+        if (state.success) {
             onClose();
         }
     }, [state, onClose]);
@@ -107,24 +105,19 @@ const UploadForm = ({ onClose }: { onClose: () => void }) => {
                 />
             </div>
             <SubmitButton text="Upload" />
-            {state.message && (
+
+            {state && !state.success && state.message && (
                 <p className="mt-2 text-red-500">{state.message}</p>
             )}
         </form>
     );
 };
 
-const ShareForm = ({
-    documentId,
-    onClose,
-}: {
-    documentId: string;
-    onClose: () => void;
-}) => {
-    const [state, formAction] = useActionState(shareDocument, { message: "" });
-
+const ShareForm = ({ documentId, onClose }: { documentId: string; onClose: () => void; }) => {
+    const [state, formAction] = useActionState(shareDocument, { success: false, message: "" });
+    
     useEffect(() => {
-        if (state.message.includes("shared with")) {
+        if (state.success) {
             onClose();
         }
     }, [state, onClose]);
@@ -133,25 +126,27 @@ const ShareForm = ({
         <form action={formAction}>
             <h2 className="text-xl font-bold mb-4">Share Document</h2>
             <input type="hidden" name="documentId" value={documentId} />
-            <div>
-                <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-gray-700"
-                >
-                    User&apos;s Email
-                </label>
-                <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    required
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                />
+            <div className="space-y-4">
+                <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">User's Email</label>
+                    <input type="email" id="email" name="email" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Access Level</label>
+                    <div className="mt-2 flex items-center gap-x-4">
+                        <label>
+                            <input type="radio" name="accessLevel" value="REDACTED" defaultChecked className="mr-1" />
+                            Redacted
+                        </label>
+                        <label>
+                            <input type="radio" name="accessLevel" value="ORIGINAL" className="mr-1" />
+                            Original
+                        </label>
+                    </div>
+                </div>
             </div>
             <SubmitButton text="Share" />
-            {state.message && (
-                <p className="mt-2 text-red-500">{state.message}</p>
-            )}
+            {state && !state.success && state.message && <p className="mt-2 text-red-500">{state.message}</p>}
         </form>
     );
 };
@@ -160,10 +155,37 @@ export default function DashboardClient({ user }: { user: User }) {
     const [isUploadModalOpen, setUploadModalOpen] = useState(false);
     const [isShareModalOpen, setShareModalOpen] = useState(false);
     const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+    const [isDownloading, startDownloadTransition] = useTransition();
 
     const openShareModal = (docId: string) => {
         setSelectedDocId(docId);
         setShareModalOpen(true);
+    };
+
+    const handleDownloadOriginal = (documentId: string) => {
+        startDownloadTransition(async () => {
+            const result = await unredactAndDownloadDocument(documentId);
+            if (result.success && result.fileData) {
+                const byteCharacters = atob(result.fileData);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: result.contentType });
+
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = result.fileName || 'restored-document.pdf';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert(result.error || "An unknown error occurred.");
+            }
+        });
     };
 
     return (
@@ -216,19 +238,23 @@ export default function DashboardClient({ user }: { user: User }) {
                 <h2 className="text-2xl font-semibold mb-4">Shared With Me</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {user.sharedDocuments.map((sharedDoc) => (
-                        <div
-                            key={sharedDoc.document.id}
-                            className="bg-white p-4 rounded-lg border"
-                        >
-                            <DocumentLink
-                                s3Key={sharedDoc.document.s3Key}
-                                fileName={sharedDoc.document.fileName}
-                            />
-                            <p className="text-sm text-gray-500">
-                                Shared by:{" "}
-                                {sharedDoc.document.owner.name ||
-                                    sharedDoc.document.owner.email}
-                            </p>
+                        <div key={sharedDoc.document.id} className="bg-white p-4 rounded-lg border flex flex-col justify-between">
+                            <div>
+                                <DocumentLink s3Key={sharedDoc.document.s3Key} fileName={sharedDoc.document.fileName} />
+                                <p className="text-sm text-gray-500">
+                                    Shared by: {sharedDoc.document.owner.name || sharedDoc.document.owner.email}
+                                </p>
+                            </div>
+
+                            {sharedDoc.accessLevel === 'ORIGINAL' && (
+                                <button
+                                    onClick={() => handleDownloadOriginal(sharedDoc.document.id)}
+                                    disabled={isDownloading}
+                                    className="mt-4 bg-green-500 text-white text-sm py-1 px-3 rounded self-start disabled:bg-gray-400"
+                                >
+                                    {isDownloading ? 'Processing...' : 'Download Original'}
+                                </button>
+                            )}
                         </div>
                     ))}
                     {user.sharedDocuments.length === 0 && (

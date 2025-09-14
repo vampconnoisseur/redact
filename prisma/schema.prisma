@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AccessLevel {
+  REDACTED
+  ORIGINAL
+}
+
 model User {
   id              String           @id @default(cuid())
   name            String?
@@ -21,10 +26,14 @@ model User {
 }
 
 model Document {
-  id         String           @id @default(cuid())
-  fileName   String
-  s3Key      String           @unique
-  ownerId    String
+  id       String @id @default(cuid())
+  fileName String
+  s3Key    String @unique
+  ownerId  String
+
+  decryptionKey String
+  redactionData Json
+
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
   owner      User             @relation("OwnedDocuments", fields: [ownerId], references: [id], onDelete: Cascade)
@@ -32,11 +41,14 @@ model Document {
 }
 
 model SharedDocument {
-  id         String   @id @default(cuid())
+  id         String @id @default(cuid())
   documentId String
   userId     String
-  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  user       User     @relation("SharedWithUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  accessLevel AccessLevel @default(REDACTED)
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation("SharedWithUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([documentId, userId])
 }

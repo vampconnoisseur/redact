@@ -15,13 +15,15 @@ export async function fetchUserWithDocuments(email: string) {
                     },
                 },
                 sharedDocuments: {
-                    include: {
+                    select: {
+                        accessLevel: true,
                         document: {
                             include: {
                                 owner: true,
                             },
                         },
                     },
+
                     orderBy: {
                         document: {
                             createdAt: "desc",
