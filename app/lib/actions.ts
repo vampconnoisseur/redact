@@ -10,6 +10,10 @@ import { KMSClient, EncryptCommand, DecryptCommand } from "@aws-sdk/client-kms";
 import { randomUUID } from "crypto";
 import { encrypt, decrypt } from "./crypto";
 
+console.log("DEBUG AWS_REGION:", process.env.AWS_REGION);
+console.log("DEBUG AWS_KMS:", process.env.AWS_KMS_KEY_ID);
+console.log("DEBUG AWS_KEY_LENGTH:", process.env.AWS_ACCESS_KEY_ID?.length);
+
 const s3Client = new S3Client({
     region: process.env.AWS_REGION!,
     credentials: {
