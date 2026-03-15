@@ -25,25 +25,12 @@ model User {
   sharedDocuments SharedDocument[] @relation("SharedWithUser")
 }
 
-model Document {
-  id       String @id @default(cuid())
-  fileName String
-  s3Key    String @unique
-  ownerId  String
-
-  decryptionKey String
-  redactionData Json
-
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
-  owner      User             @relation("OwnedDocuments", fields: [ownerId], references: [id], onDelete: Cascade)
-  sharedWith SharedDocument[]
-}
-
 model SharedDocument {
   id         String @id @default(cuid())
   documentId String
   userId     String
+
+  passwordHash String?
 
   accessLevel AccessLevel @default(REDACTED)
 
@@ -90,4 +77,38 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+enum EngineType {
+  CLASSIC
+  LLM
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  displayName String
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner      User             @relation("OwnedDocuments", fields: [ownerId], references: [id], onDelete: Cascade)
+  sharedWith SharedDocument[]
+
+  versions DocumentVersion[]
+
+  @@unique([ownerId, displayName])
+}
+
+model DocumentVersion {
+  id            String     @id @default(cuid())
+  documentId    String
+  versionNumber Int
+  fileName      String
+  s3Key         String     @unique
+  decryptionKey String
+  redactionData Json
+  engineUsed    EngineType @default(CLASSIC)
+  createdAt     DateTime   @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 }

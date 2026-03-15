@@ -16,7 +16,7 @@ export default function Home() {
     }
 
     if (session) {
-        return redirect("/dashboard");
+        return redirect("/mydocuments");
     }
 
     return (

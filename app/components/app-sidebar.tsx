@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
 import Link from "next/link";
-import { ChevronUp, User, LayoutDashboard, LogOut, LogIn } from "lucide-react";
+import { ChevronUp, User, LayoutDashboard, LogOut, LogIn, Users } from "lucide-react";
 import {
     Sidebar,
     SidebarContent,
@@ -22,37 +21,29 @@ import {
 } from "@radix-ui/react-dropdown-menu";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { UserWithDocuments } from "../lib/types";
+import type { Session } from "next-auth";
 
-export function AppSidebar({ user }: { user: UserWithDocuments | null }) {
+interface AppSidebarProps {
+    user: { name: string | null; isAdmin: boolean } | null;
+    sessionUser: Session["user"] | undefined;
+}
+
+export function AppSidebar({ user, sessionUser }: AppSidebarProps) {
     const currentPath = usePathname();
+    const userName = user?.name ?? sessionUser?.name ?? "Guest";
+    const isAuthenticated = !!sessionUser;
 
-    const isAdmin = user?.isAdmin ?? false;
-    const userName = user?.name ?? "Guest";
-    const isAuthenticated = !!user;
-
-    const items = useMemo(() => {
-        const menuItems = [
-            { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+    const items = [
+            { title: "My Documents", url: "/mydocuments", icon: LayoutDashboard },
+            { title: "Shared Documents", url: "/shared", icon: Users },
         ];
-
-        if (isAdmin) {
-            menuItems.push({
-                title: "Admin Panel",
-                url: "/admin",
-                icon: User,
-            });
-        }
-
-        return menuItems;
-    }, [isAdmin]);
 
     return (
         <Sidebar>
             <SidebarContent>
                 <SidebarGroup>
                     <SidebarGroupLabel className="pr-8">
-                        My Documents
+                        Dashboards
                     </SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
@@ -88,7 +79,7 @@ export function AppSidebar({ user }: { user: UserWithDocuments | null }) {
                                 side="top"
                                 className="w-[--radix-popper-anchor-width] mb-2 p-1 rounded-md bg-gray-200 dark:bg-gray-800"
                             >
-                                {isAuthenticated ? (
+                                {!isAuthenticated ? (
                                     <DropdownMenuItem asChild>
                                         <button
                                             className="w-full flex items-center gap-2 px-2 py-1.5 text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-700 rounded-sm"

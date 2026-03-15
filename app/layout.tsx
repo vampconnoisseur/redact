@@ -32,7 +32,7 @@ export default async function RootLayout({
             <body>
                 <SessionWrapper>
                     <SidebarProvider>
-                        <AppSidebar user={user} />
+                        <AppSidebar user={user} sessionUser={session?.user} />
                         <main className="w-full">
                             <div className="sticky top-0 z-10 flex items-center px-4 py-2 backdrop-blur-md backdrop-brightness-125 border border-gray-300/50 shadow-sm">
                                 <SidebarTrigger className="" />
