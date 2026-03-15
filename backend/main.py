@@ -18,7 +18,7 @@ from core.security import generate_key, decrypt_text
 
 app = FastAPI(title="Dual-Engine Document Redaction Service")
 
-origins = [ "http://localhost:3000", "*" ]
+origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -58,6 +58,7 @@ async def process_endpoint(
     severity: int = Form(...),
     engine: Literal['classic', 'llm'] = Form(...)
 ):
+    print("DEBUG: Request reached /process/ endpoint") 
     unique_filename = f"{uuid.uuid4()}_{file.filename}"
     input_path = os.path.join(TEMP_UPLOADS_DIR, unique_filename)
     with open(input_path, "wb") as buffer:
