@@ -40,11 +40,12 @@ export async function uploadNewVersion(prevState: unknown, formData: FormData) {
 
     if (!file || !engine || !displayName) return { success: false, message: "Missing required fields." };
     
-    const apiBaseUrl = process.env.PYTHON_API_BASE_URL;
+    const apiBaseUrl = process.env.PYTHON_API_BASE_URL?.replace(/\/$/, ""); 
     const pythonFormData = new FormData();
     pythonFormData.append("file", file);
     pythonFormData.append("severity", "100");
     pythonFormData.append("engine", engine);
+    
     
     let pythonResponse;
     try {
@@ -261,7 +262,7 @@ export async function unredactAndDownload(documentId: string, versionId: string)
         return { success: false, error: "Could not retrieve document." };
     }
 
-    const apiBaseUrl = process.env.PYTHON_API_BASE_URL;
+    const apiBaseUrl = process.env.PYTHON_API_BASE_URL?.replace(/\/$/, "");
     const pythonFormData = new FormData();
     pythonFormData.append("file", new Blob([s3FileBuffer]), version.fileName);
     
