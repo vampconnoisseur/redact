@@ -79,7 +79,7 @@ export function AppSidebar({ user, sessionUser }: AppSidebarProps) {
                                 side="top"
                                 className="w-[--radix-popper-anchor-width] mb-2 p-1 rounded-md bg-gray-200 dark:bg-gray-800"
                             >
-                                {!isAuthenticated ? (
+                                {isAuthenticated ? (
                                     <DropdownMenuItem asChild>
                                         <button
                                             className="w-full flex items-center gap-2 px-2 py-1.5 text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-700 rounded-sm"
